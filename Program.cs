@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace ProducerNConsumer
 {
@@ -10,7 +11,7 @@ namespace ProducerNConsumer
 
         static void Main(string[] args)
         {
-            Bank bank = new Bank(3,1,5); // 1:1, queuecapa=5
+            Bank bank = new Bank(1,1,5); // 1:1, queuecapa=5
             bank.open();
             bank.close();
         }
@@ -75,64 +76,81 @@ namespace ProducerNConsumer
         class waitingLine
         {
             public waitingLine(int cap){
-                line = new Queue<int>(cap);
+                line = new BlockingCollection<int>(cap);
                 capacity = cap;
-
-                notFull = new EventWaitHandle(false, EventResetMode.AutoReset);
-                notEmpty = new EventWaitHandle(false, EventResetMode.AutoReset);
-                clear1 = new EventWaitHandle(false, EventResetMode.AutoReset);
-                clear2 = new EventWaitHandle(false, EventResetMode.AutoReset);
-
             }
 
-            public void addToQ(int id)
+            public bool addToQ(int id)
             {
-                // if queue is full, wait for the queue not full
-                if (line.Count == capacity)
-                    notFull.WaitOne();
+                //// if queue is full, wait for the queue not full
+                //if (line.Count == capacity)
+                //    notFull.WaitOne();
 
                 // add p to Queue
-                line.Enqueue(id);
+                try
+                {
+                    line.Add(id);
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("Interrupted. The bank will be closed soon.");
+                    return false;
+                }
 
                 Console.WriteLine($"A Person #{id} entered");
                 Console.WriteLine($"Total: {line.Count} people are waiting\n");
+                
+
+                return true;
 
                 //Interlocked.Increment(ref clients);
 
-                if (line.Count == 1)
-                    WaitHandle.SignalAndWait(notEmpty, clear2);
+                //if (line.Count == 1)
+                //    WaitHandle.SignalAndWait(notEmpty, clear2);
 
-                clear1.Set();
+                //clear1.Set();
             }
 
-            public int removeFromQ()
+            public bool removeFromQ(out int id)
             {
                 // if queue is empty, wait for the queue not empty
-                if (line.Count == 0)
-                    notEmpty.WaitOne();
+                //if (line.Count == 0)
+                //    notEmpty.WaitOne();
 
                 // Remove
-                int id = line.Dequeue();
-                //Interlocked.Decrement(ref clients);
-
+                try
+                {
+                    id = line.Take();
+                    //Interlocked.Decrement(ref clients);   
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Interrupted. The bank will be closed soon.");
+                    id = 0;
+                    return false;
+                }
                 Console.WriteLine($"A Person #{id} has been processed");
                 Console.WriteLine($"Total: {line.Count} people are waiting\n");
+                return true;
 
-                if (line.Count == capacity - 1)
-                    WaitHandle.SignalAndWait(notFull, clear1);
+                //if (line.Count == capacity - 1)
+                //    WaitHandle.SignalAndWait(notFull, clear1);
 
-                clear2.Set();
+                //clear2.Set();
 
-                return id;
+                //return id;
             }
 
-            private Queue<int> line;
+            private BlockingCollection<int> line;
             private int capacity;
 
             private EventWaitHandle notFull;
             private EventWaitHandle clear1;
             private EventWaitHandle notEmpty;
             private EventWaitHandle clear2;
+
+            public object lockObj = new object();
+
         }
 
         class Client
@@ -175,11 +193,11 @@ namespace ProducerNConsumer
             public void employeeWorking()
             {
                 Random rand = new Random();
-                int userid;
+                int userid = default;
                 while (true)
                 {
-                    userid = line.removeFromQ();
-                    Console.WriteLine($"A person #{userid} wants to leave, Bye Bye\n");
+                    if(line.removeFromQ(out userid))
+                        Console.WriteLine($"A person #{userid} wants to leave, Bye Bye\n");
 
                     int sleep = rand.Next(1, 10) * 1000;
                     Task.Delay(sleep).Wait();
