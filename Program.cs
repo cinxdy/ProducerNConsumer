@@ -46,14 +46,14 @@ namespace ProducerNConsumer
                 {
                     Employee e = new Employee(line, i + 1);
                     //eList.Add(e);
-                    tList.Add(new Thread(e.employeeWorking));
+                    tList.Add(new Thread(e.work));
                 }
 
                 for (int i = 0; i < n_client; i++)
                 {
                     Client c = new Client(line, i+1);
                     //cList.Add(c);
-                    tList.Add(new Thread(c.clientComing));
+                    tList.Add(new Thread(c.come));
                 }
 
                 foreach (Thread t in tList)
@@ -91,7 +91,7 @@ namespace ProducerNConsumer
                 sum = 0;
             }
 
-            public bool addToQ(int id)
+            public bool add(int id)
             {
                 //// if queue is full, wait for the queue not full
                 //if (line.Count == capacity)
@@ -120,7 +120,7 @@ namespace ProducerNConsumer
                 //clear1.Set();
             }
 
-            public bool removeFromQ(out int id)
+            public bool remove(out int id)
             {
                 // if queue is empty, wait for the queue not empty
                 //if (line.Count == 0)
@@ -176,7 +176,7 @@ namespace ProducerNConsumer
                 this.id = id;
             }
 
-            public void clientComing()
+            public void come()
             {
                 Random rand = new Random();
                 int userid = 1000;
@@ -187,7 +187,7 @@ namespace ProducerNConsumer
                     {
                         userid = rand.Next(1000, 9999);
                         Console.WriteLine($"A person #{userid} wants to enter, let us see the status\n");
-                        if (!line.addToQ(userid)) break;
+                        if (!line.add(userid)) break;
 
                         // entering in random timing
                         int sleep = rand.Next(1, 5) * 1000;
@@ -199,8 +199,6 @@ namespace ProducerNConsumer
                         break;
                     }
                 }
-
-
             }
             public string toString() => $"Door ID:{id}";
             private int id;
@@ -215,7 +213,7 @@ namespace ProducerNConsumer
                 this.line = line;
             }
 
-            public void employeeWorking()
+            public void work()
             {
                 Random rand = new Random();
                 int userid = default;
@@ -223,7 +221,7 @@ namespace ProducerNConsumer
                 {
                     try
                     {
-                        if (!line.removeFromQ(out userid)) break;
+                        if (!line.remove(out userid)) break;
                         Console.WriteLine($"A person #{userid} wants to leave, Bye Bye\n");
                         line.getSum();
 
