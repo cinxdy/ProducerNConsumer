@@ -1,11 +1,16 @@
 ﻿# Producer and Consumer Program
 
-# A bank system, which is implemented as a model of producer and consumer.
+## A bank system, which is implemented as a model of producer and consumer.
 
-Like a bank in usual, several clients come into the bank, wait for the line, and then employees take their order,  
-and then finally clients leave the bank after their work have been processed.
+In our daily life in a bank, several clients come into the bank, wait for the line,  
+and then one of several employees takes the order, then finally clients who finished their business leave the bank.
 
+In this case, clients keep entering, and employees keep working asynchonously. Clients cannot come into a bank but have to wait for the line  
+unless the waiting line is empty. Similarly, employees cannot provide any services but have to wait for clients unless there is any client.  
 Such a model, where tasks are processed asynchronously, is known as producer and consumer problem, or bounded queue problem.
+
+In this project, I implemented the producer and consumer model, simulating a bank system.
+
 
 ![IMG](./img.png)
 
