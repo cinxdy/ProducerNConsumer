@@ -7,6 +7,7 @@ and then finally clients leave the bank after their work have been processed.
 
 Such a model, where tasks are processed asynchronously, is known as producer and consumer problem, or bounded queue problem.
 
+![IMG](./img.png)
 
 # Test
 - Thread ratio 1:1 , waitingLineCapacity = 5
