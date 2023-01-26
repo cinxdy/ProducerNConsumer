@@ -18,7 +18,7 @@ In this project, I implemented the producer and consumer model, simulating a ban
 ### Using Condition Variable
 - waitingLineCV
 
-```
+```cs
 public bool add(string name)
 {
     //// if queue is full, wait for the queue not full
@@ -82,7 +82,7 @@ public bool take(out string name)
 
 ### Using Blocking Collection
 - waitingLineBC
-```
+```cs
 public bool add(string name)
 {
     // add p to Queue
