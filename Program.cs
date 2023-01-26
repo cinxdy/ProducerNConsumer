@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using RandomNameGen;
 
 namespace ProducerNConsumer
 {
@@ -11,30 +12,20 @@ namespace ProducerNConsumer
 
         static void Main(string[] args)
         {
-            Bank bank = new Bank(3,3,5); // 1:1, queuecapa=5
+            var bank = new Bank(3,1,5); // 1:1, queuecapa=5
             bank.open();
             bank.close();
         }
 
         class Bank
-        {
-            private int n_client;
-            private int n_employee;
-            private int cap_line;
-
-            private waitingLine line;
-
-            //private List<Client> cList;
-            //private List<Employee> eList;
-            private List<Thread> tList;
-             
+        {            
             public Bank(int n_client, int n_employee, int cap_line)
             {
                 this.n_client = n_client;
                 this.n_employee = n_employee;
                 this.cap_line = cap_line;
+                this.line = new waitingLineBC(cap_line);
 
-                this.line = new waitingLine(cap_line);
                 //this.cList = new List<Client>(n_client);
                 //this.eList = new List<Employee>(n_employee);
                 this.tList = new List<Thread>();
@@ -51,7 +42,7 @@ namespace ProducerNConsumer
 
                 for (int i = 0; i < n_client; i++)
                 {
-                    Client c = new Client(line, i+1);
+                    Client c = new Client(line, i + 1);
                     //cList.Add(c);
                     tList.Add(new Thread(c.come));
                 }
@@ -80,27 +71,41 @@ namespace ProducerNConsumer
 
                 args.Cancel = true;
             }
+
+            private int n_client;
+            private int n_employee;
+            private int cap_line;
+
+            private waitingLineBC line;
+
+            //private List<Client> cList;
+            //private List<Employee> eList;
+            private List<Thread> tList;
         }
 
-        class waitingLine
+        //interface waitingLine
+        //{
+        //    //public waitingLine(int cap);
+        //    public bool add(int id);
+        //    public bool take(out int id);
+        //    public int getSum();
+        //}
+
+        class waitingLineBC
         {
-            public waitingLine(int cap){
-                line = new BlockingCollection<int>(cap);
+            public waitingLineBC(int cap){
+                line = new BlockingCollection<string>(cap);
                 capacity = cap;
                 cnt = 0;
                 sum = 0;
             }
 
-            public bool add(int id)
+            public bool add(string name)
             {
-                //// if queue is full, wait for the queue not full
-                //if (line.Count == capacity)
-                //    notFull.WaitOne();
-
                 // add p to Queue
                 try
                 {
-                    line.Add(id);
+                    line.Add(name);
                     Interlocked.Increment(ref cnt);
                 }
                 catch (Exception e)
@@ -109,68 +114,124 @@ namespace ProducerNConsumer
                     return false;
                 }
 
-                Console.WriteLine($"A Person #{id} entered");
+                Console.WriteLine($"\t\t{name} entered");
                 Console.WriteLine($"Total: {cnt} people are waiting\n");
 
                 return true;
-
-                //if (line.Count == 1)
-                //    WaitHandle.SignalAndWait(notEmpty, clear2);
-
-                //clear1.Set();
             }
 
-            public bool remove(out int id)
+            public bool take(out string name)
             {
-                // if queue is empty, wait for the queue not empty
-                //if (line.Count == 0)
-                //    notEmpty.WaitOne();
-
                 // Remove
                 try
                 {
-                    id = line.Take();
+                    name = line.Take();
                     Interlocked.Decrement(ref cnt);   
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine("Interrupted. The bank will be closed soon.");
-                    id = 0;
+                    name = "unknown";
                     return false;
                 }
-                Console.WriteLine($"A Person #{id} has been processed");
+                Console.WriteLine($"\t\t{name} has been processed");
                 Console.WriteLine($"Total: {cnt} people are waiting\n");
                 return true;
-
-                //if (line.Count == capacity - 1)
-                //    WaitHandle.SignalAndWait(notFull, clear1);
-
-                //clear2.Set();
-
-                //return id;
             }
 
-            public int getSum()
-            {
-                return sum++;
-            }
-
+            public int getSum() => sum++;
             private int sum;
-            private BlockingCollection<int> line;
-            //private readonly object cntLock = new object();
+            private BlockingCollection<string> line;
             private int capacity;
             private int cnt;
+        }
 
-            //private EventWaitHandle notFull;
-            //private EventWaitHandle clear1;
-            //private EventWaitHandle notEmpty;
-            //private EventWaitHandle clear2;
+        class waitingLineCV
+        {
+            public waitingLineCV(int cap)
+            {
+                line = new ConcurrentQueue<string>();
+                capacity = cap;
+                cnt = 0;
+                sum = 0;
+            }
 
+            public bool add(string name)
+            {
+                //// if queue is full, wait for the queue not full
+                if (Interlocked.Read(ref cnt) == capacity)
+                    notFull.WaitOne();
+
+                // add p to Queue
+                try
+                {   
+                    line.Enqueue(name);
+                    Interlocked.Increment(ref cnt);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Interrupted. The bank will be closed soon.");
+                    return false;
+                }
+
+                Console.WriteLine($"{name} entered");
+                Console.WriteLine($"Total: {cnt} people are waiting\n");
+
+                // if its not empty
+                if (Interlocked.Read(ref cnt) == 1)
+                    WaitHandle.SignalAndWait(notEmpty, clear2);
+
+                clear1.Set();
+
+                return true;
+            }
+
+            public bool take(out string name)
+            {
+                // if queue is empty, wait for the queue not empty
+                if (Interlocked.Read(ref cnt) == 0)
+                    notEmpty.WaitOne();
+
+                // Remove
+                try
+                {
+                    if (line.TryDequeue(out name))
+                        Interlocked.Decrement(ref cnt);
+                    else name = "unknown";
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Interrupted. The bank will be closed soon.");
+                    name = "unknown";
+                    return false;
+                }
+                Console.WriteLine($"{name} has been processed");
+                Console.WriteLine($"Total: {cnt} people are waiting\n");
+                
+                if (Interlocked.Read(ref cnt) == capacity - 1)
+                    WaitHandle.SignalAndWait(notFull, clear1);
+
+                clear2.Set();
+
+                return true;
+            }
+
+            public int getSum() => sum++;
+
+            private int sum;
+            private ConcurrentQueue<string> line;
+            private int capacity;
+            private long cnt;
+
+            private EventWaitHandle notFull = new EventWaitHandle(false, EventResetMode.AutoReset);
+            private EventWaitHandle clear1 = new EventWaitHandle(false, EventResetMode.ManualReset);
+            private EventWaitHandle notEmpty = new EventWaitHandle(false, EventResetMode.AutoReset);
+            private EventWaitHandle clear2 = new EventWaitHandle(false, EventResetMode.ManualReset);
         }
 
         class Client
         {
-            public Client(waitingLine line, int id)
+            public Client(waitingLineBC line, int id)
             {
                 this.line = line;
                 this.id = id;
@@ -179,15 +240,17 @@ namespace ProducerNConsumer
             public void come()
             {
                 Random rand = new Random();
-                int userid = 1000;
+                RandomName nameGen = new RandomName(rand);
+
+                string name = default;
                 // Assume the several clients today
                 while (true)
                 {
                     try
                     {
-                        userid = rand.Next(1000, 9999);
-                        Console.WriteLine($"A person #{userid} wants to enter, let us see the status\n");
-                        if (!line.add(userid)) break;
+                        name = nameGen.Generate();
+                        Console.WriteLine($"\t{name} wants to enter, let us see the status\n");
+                        if (!line.add(name)) break;
 
                         // entering in random timing
                         int sleep = rand.Next(1, 5) * 1000;
@@ -202,12 +265,12 @@ namespace ProducerNConsumer
             }
             public string toString() => $"Door ID:{id}";
             private int id;
-            private waitingLine line;
+            private waitingLineBC line;
         }
 
         class Employee
         {
-            public Employee(waitingLine line, int id)
+            public Employee(waitingLineBC line, int id)
             {
                 this.id = id;
                 this.line = line;
@@ -216,13 +279,13 @@ namespace ProducerNConsumer
             public void work()
             {
                 Random rand = new Random();
-                int userid = default;
+                string username = default;
                 while (true)
                 {
                     try
                     {
-                        if (!line.remove(out userid)) break;
-                        Console.WriteLine($"A person #{userid} wants to leave, Bye Bye\n");
+                        if (!line.take(out username)) break;
+                        Console.WriteLine($"\t{username} wants to leave, Bye Bye\n");
                         line.getSum();
 
                         int sleep = rand.Next(1, 10) * 1000;
@@ -237,7 +300,7 @@ namespace ProducerNConsumer
             }
             public string toString() => $"Employee ID:{id}";
             private int id;
-            private waitingLine line;
+            private waitingLineBC line;
         }
     }
 }
