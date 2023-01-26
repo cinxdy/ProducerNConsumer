@@ -12,7 +12,7 @@ namespace ProducerNConsumer
 
         static void Main(string[] args)
         {
-            var bank = new Bank(3,1,5); // 1:1, queuecapa=5
+            var bank = new Bank(3,3,5); // 1:1, queuecapa=5
             bank.open();
             bank.close();
         }
