@@ -36,7 +36,7 @@ namespace ProducerNConsumer
                 return false;
             }
 
-            Debug.WriteLine($"\t\t>>> {name}");
+            Debug.WriteLine($"\t\t >>> {name}");
             return true;
         }
 
@@ -99,7 +99,7 @@ namespace ProducerNConsumer
 
             clear1.Set();
 
-            Debug.WriteLine($"{name} entered.");
+            Debug.WriteLine($"\t\t >>> {name}");
             return true;
         }
 
@@ -126,7 +126,7 @@ namespace ProducerNConsumer
                 WaitHandle.SignalAndWait(notFull, clear1);
             clear2.Set();
 
-            Debug.WriteLine($"{name} has been processed");
+            Debug.WriteLine($"\t\t <<< {name}");
             return true;
         }
 

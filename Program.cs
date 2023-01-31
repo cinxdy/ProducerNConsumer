@@ -8,7 +8,7 @@ namespace ProducerNConsumer
 
         static void Main(string[] args)
         {
-            var bank = new Bank<WaitingLineBc>(3,3,5); // 1:1, queuecapa=5
+            var bank = new Bank<WaitingLineCv>(3,3,5); // 1:1, queuecapa=5
             bank.Open();
             bank.Close();
         }
